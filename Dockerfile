@@ -2,45 +2,65 @@
 FROM golang:1.21-alpine AS builder
 
 # Install build dependencies
-RUN apk add --no-cache git ca-certificates
+RUN apk add --no-cache git ca-certificates tzdata
 
 WORKDIR /app
 
-# Copy go mod files
+# Copy go mod files first for better caching
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go mod download && go mod verify
 
 # Copy source code
 COPY . .
 
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o coordinator ./cmd/coordinator/
+# Build the application with optimizations
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -a -installsuffix cgo \
+    -ldflags='-w -s -extldflags "-static"' \
+    -o coordinator cmd/coordinator/main.go
 
-# Final runtime image
-FROM alpine:3.19
+# Runtime stage
+FROM alpine:3.18
 
-# Install ca-certificates for TLS
-RUN apk --no-cache add ca-certificates
+# Install runtime dependencies
+RUN apk --no-cache add \
+    ca-certificates \
+    tzdata \
+    wget \
+    && update-ca-certificates
 
-WORKDIR /root/
+# Create non-root user for security
+RUN addgroup -g 1000 zephyrfs && \
+    adduser -D -s /bin/sh -u 1000 -G zephyrfs zephyrfs
 
-# Create non-root user
-RUN addgroup -g 1000 zephyr && adduser -D -s /bin/sh -u 1000 -G zephyr zephyr
+# Create necessary directories
+RUN mkdir -p /data /config /logs && \
+    chown -R zephyrfs:zephyrfs /data /config /logs
 
-# Create data directory
-RUN mkdir -p /var/lib/zephyrfs && chown zephyr:zephyr /var/lib/zephyrfs
+WORKDIR /app
 
 # Copy binary from builder stage
-COPY --from=builder /app/coordinator .
-COPY --from=builder /app/configs/config.yaml ./config.yaml
+COPY --from=builder --chown=zephyrfs:zephyrfs /app/coordinator .
 
-USER zephyr
+# Create default configuration
+RUN echo 'database:\n  type: "bbolt"\n  path: "/data/coordinator.db"\ngrpc:\n  port: 8080\nhttp:\n  enabled: true\n  port: 8090\nhealth:\n  metrics_enabled: true\n  metrics_port: 8091' > /config/config.yaml && \
+    chown zephyrfs:zephyrfs /config/config.yaml
 
-# Expose coordinator API port
-EXPOSE 9090
+# Switch to non-root user
+USER zephyrfs
+
+# Expose ports
+EXPOSE 8080 8090 8091
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD ./coordinator --health-check || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8091/health || exit 1
 
+# Set default environment variables
+ENV CONFIG_PATH=/config/config.yaml
+ENV DATA_PATH=/data
+ENV LOG_LEVEL=info
+
+# Run the coordinator
 ENTRYPOINT ["./coordinator"]
+CMD ["-config", "/config/config.yaml", "-log-level", "info"]

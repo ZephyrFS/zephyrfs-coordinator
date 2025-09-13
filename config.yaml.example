@@ -1,0 +1,62 @@
+# ZephyrFS Coordinator Configuration
+
+# Database configuration
+database:
+  type: "bbolt"          # "bbolt" or "postgres"
+  path: "./coordinator.db"    # Path for bbolt database
+  # url: "postgresql://user:pass@localhost:5432/coordinator"  # URL for PostgreSQL
+
+# gRPC server configuration
+grpc:
+  port: 8080                    # gRPC server port
+  max_message_size: 4194304     # 4MB max message size
+  enable_reflection: false      # Enable gRPC reflection (development only)
+
+# HTTP API server configuration
+http:
+  enabled: true                 # Enable HTTP API server
+  port: 8090                   # HTTP API server port
+
+# Coordinator-specific configuration
+coordinator:
+  node_timeout: "30s"           # Node operation timeout
+  heartbeat_interval: "10s"     # Expected heartbeat interval
+  replication_factor: 3         # Default replication factor
+  max_nodes_per_chunk: 10      # Maximum nodes to store a single chunk
+  cleanup_interval: "5m"        # Cleanup inactive nodes interval
+  node_inactive_after: "60s"   # Mark node inactive after this timeout
+  geographic_spread: true       # Enable geographic distribution
+
+# Health monitoring configuration
+health:
+  check_interval: "30s"         # Health check interval
+  metrics_enabled: true         # Enable metrics collection
+  metrics_port: 8091           # Metrics HTTP server port
+
+# Development/Production configurations
+
+# Development configuration
+dev:
+  database:
+    type: "bbolt"
+    path: "./dev-coordinator.db"
+  grpc:
+    enable_reflection: true
+  coordinator:
+    cleanup_interval: "1m"
+    node_inactive_after: "30s"
+
+# Production configuration
+prod:
+  database:
+    type: "postgres"
+    url: "${DATABASE_URL}"
+  grpc:
+    port: 8080
+    max_message_size: 16777216  # 16MB for production
+  coordinator:
+    replication_factor: 5       # Higher replication for production
+    cleanup_interval: "10m"
+    node_inactive_after: "120s"
+  health:
+    check_interval: "60s"
