@@ -101,8 +101,8 @@ func NewMonitor(coord *coordinator.Coordinator, cfg config.HealthConfig) *Monito
 	}
 }
 
-// Monitor starts the health monitoring background process
-func Monitor(ctx context.Context, coord *coordinator.Coordinator, cfg config.HealthConfig) {
+// StartMonitoring starts the health monitoring background process
+func StartMonitoring(ctx context.Context, coord *coordinator.Coordinator, cfg config.HealthConfig) {
 	monitor := NewMonitor(coord, cfg)
 
 	// Start metrics collection

@@ -2,7 +2,6 @@ package coordinator
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -10,7 +9,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"go.etcd.io/bbolt"
 
 	"github.com/ZephyrFS/zephyrfs-coordinator/internal/config"
 	"github.com/ZephyrFS/zephyrfs-coordinator/internal/database"

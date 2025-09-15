@@ -31,8 +31,6 @@ func NewBBoltDB(path string) (*BBoltDB, error) {
 		FreelistType:    bbolt.FreelistMapType,
 		ReadOnly:        false,
 		NoSync:          false,
-		MaxBatchSize:    1000,
-		MaxBatchDelay:   10 * time.Millisecond,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open BBolt database at %s: %w", path, err)
@@ -185,9 +183,9 @@ func (b *BBoltDB) Stats() (*Stats, error) {
 		boltStats := b.db.Stats()
 
 		// Database-level stats
-		stats.PageSize = boltStats.PageSize
+		// Note: Some bbolt Stats fields may not be available in newer versions
 		stats.FreePages = boltStats.FreePageN
-		stats.TotalSize = int64(boltStats.PageCount * boltStats.PageSize)
+		stats.TotalSize = int64(boltStats.TxN) // Use transaction count as approximation
 
 		// Count buckets and keys
 		bucketCount := int64(0)

@@ -79,7 +79,7 @@ func main() {
 
 	// Start health monitoring
 	go func() {
-		health.Monitor(ctx, coord, cfg.Health)
+		health.StartMonitoring(ctx, coord, cfg.Health)
 	}()
 
 	// Wait for shutdown signal

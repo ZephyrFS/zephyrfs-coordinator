@@ -417,7 +417,7 @@ func (c *Coordinator) cleanupInactiveNodes() {
 	defer c.nodesMux.Unlock()
 
 	var toRemove []string
-	cutoff := time.Now().Add(-c.config.NodeInactiveAfter * 3) // 3x the timeout
+	cutoff := c.config.NodeInactiveAfter * 3 // 3x the timeout duration
 
 	for nodeID, node := range c.nodes {
 		if time.Since(node.LastHeartbeat) > cutoff {
